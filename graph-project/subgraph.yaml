@@ -8,9 +8,9 @@ dataSources:
     name: BloomContent
     network: sepolia
     source:
-      address: "0x8Cc14193389a33F7706f8Fb68b58C48a0381D454"
+      address: "0xdAA843DF8b41861F6C539ACEa0C4017e83F859cE"
       abi: BloomContent
-      startBlock: 10033811
+      startBlock: 10097166
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
