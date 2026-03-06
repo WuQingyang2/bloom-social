@@ -1,10 +1,13 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
+import { CommentForm } from "@/components/CommentForm";
+import { CommentList } from "@/components/CommentList";
 import {
   BLOOM_CONTENT_ADDRESS,
   BLOOM_CONTENT_ABI,
@@ -27,6 +30,7 @@ export default function ContentDetailPage() {
   const params = useParams();
   const contentId = params.id as string;
   const { address, isConnected } = useAccount();
+  const [commentRefresh, setCommentRefresh] = useState(0);
 
   // Fetch from Graph for content details
   const { data: graphContent, refetch: refetchGraph } = useQuery({
@@ -294,6 +298,18 @@ export default function ContentDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Comments Section */}
+            <div className="mt-8 space-y-6">
+              <CommentForm 
+                contentId={parseInt(contentId)}
+                onCommentPosted={() => setCommentRefresh(prev => prev + 1)}
+              />
+              <CommentList 
+                contentId={parseInt(contentId)}
+                refreshTrigger={commentRefresh}
+              />
+            </div>
           </div>
 
           {/* Sidebar - Actions */}

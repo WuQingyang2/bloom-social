@@ -33,6 +33,12 @@ BloomSocial 通过智能合约实现了一套创新的内容激励机制：
 │   - BloomToken    │  events │   - 索引链上事件   │
 │   - BloomContent  │         │   - 提供查询 API   │
 └───────────────────┘         └───────────────────┘
+                        │
+                        ▼
+               ┌───────────────────┐
+               │   PostgreSQL      │
+               │   (评论系统)       │
+               └───────────────────┘
 ```
 
 ## 项目结构
@@ -49,9 +55,12 @@ bloom-social/
 │   └── docs/                  # 合约文档
 │
 ├── frontend-project/          # 前端应用
+│   ├── migrations/            # 数据库迁移
 │   └── src/
 │       ├── app/               # Next.js App Router
+│       │   └── api/comments/  # 评论 API
 │       ├── components/        # React 组件
+│       ├── hooks/             # 自定义 Hooks
 │       └── lib/               # 工具库
 │
 ├── graph-project/             # Subgraph 索引器
@@ -67,9 +76,10 @@ bloom-social/
 | 层级 | 技术 |
 |------|------|
 | 智能合约 | Solidity 0.8.24, Hardhat, OpenZeppelin |
-| 前端 | Next.js 14, React 18, TypeScript |
+| 前端 | Next.js 15, React 19, TypeScript |
 | Web3 集成 | wagmi v2, viem, RainbowKit |
 | 数据索引 | The Graph, GraphQL |
+| 评论存储 | PostgreSQL |
 | 样式 | Tailwind CSS |
 
 ## 快速开始
@@ -78,6 +88,7 @@ bloom-social/
 
 - Node.js >= 18
 - pnpm / npm / yarn
+- Docker Desktop（评论数据库）
 
 ### 1. 安装依赖
 
@@ -103,12 +114,38 @@ BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id
 NEXT_PUBLIC_BLOOM_TOKEN_ADDRESS=deployed_token_address
 NEXT_PUBLIC_BLOOM_CONTENT_ADDRESS=deployed_content_address
+NEXT_PUBLIC_GRAPH_URL=your_graph_endpoint
+
+# 评论数据库配置
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=123456
+DB_NAME=bloom_social
 ```
 
-### 3. 编译和测试合约
+### 3. 启动 PostgreSQL（评论功能）
 
 ```bash
-cd contract-project
+docker run --name bloom-postgres \
+  -e POSTGRES_PASSWORD=123456 \
+  -e POSTGRES_DB=bloom_social \
+  -p 5432:5432 \
+  -d postgres:15
+```
+
+### 4. 初始化评论表
+
+```bash
+cd frontend-project
+node test-db.js
+# 或手动执行 migrations/001_create_comments.sql
+```
+
+### 5. 编译和测试合约
+
+```bash
+cd ../contract-project
 
 # 编译
 npm run compile
@@ -117,17 +154,17 @@ npm run compile
 npm run test
 ```
 
-### 4. 部署合约
+### 6. 部署合约
 
 ```bash
 # 部署到 Sepolia 测试网
 npm run deploy:sepolia
 ```
 
-### 5. 启动前端
+### 7. 启动前端
 
 ```bash
-cd frontend-project
+cd ../frontend-project
 npm run dev
 ```
 
@@ -192,6 +229,21 @@ function follow(address followee) external;
 function unfollow(address followee) external;
 ```
 
+## 评论功能（新增）
+
+- 评论为链下存储（PostgreSQL），身份由钱包签名验证（EIP-191）
+- 发布评论会触发钱包签名，不消耗 gas
+- 支持删除自己的评论（软删除）
+- 评论数为 0 时，前端不显示评论列表区域
+
+### API
+
+```http
+POST   /api/comments
+GET    /api/comments?contentId=123&limit=20&offset=0
+DELETE /api/comments/[id]
+```
+
 ## 开发指南
 
 ### 合约开发
@@ -221,7 +273,7 @@ npm run dev
 npm run build
 
 # 类型检查
-npm run typecheck
+npm run lint
 ```
 
 ### Subgraph 开发
